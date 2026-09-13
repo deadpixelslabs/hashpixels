@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/ethers@6.13.5/dist/ethers.umd.min.js'"></script>
   <style>
     :root{
       --bg:#07080b;--panel:#1d2028;--panel2:#12151b;--line:#3a3e48;--line2:#292d36;
@@ -367,6 +367,38 @@ const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
 let rpcProvider, walletProvider, signer, walletAddress;
 let hashpixelsRead, deadPixelsRead, deadPixelsWrite;
+let injectedProvider = null;
+const announcedProviders = [];
+
+function discoverInjectedWallets(){
+  // EIP-6963 discovery only discovers providers; it does NOT connect or request accounts.
+  window.addEventListener("eip6963:announceProvider",(event)=>{
+    const p=event?.detail?.provider;
+    if(p && !announcedProviders.includes(p)) announcedProviders.push(p);
+  });
+  try{ window.dispatchEvent(new Event("eip6963:requestProvider")); }catch{}
+}
+
+function pickInjectedProvider(){
+  const candidates = [];
+  const add = p => {
+    if(p && typeof p.request === "function" && !candidates.includes(p)) candidates.push(p);
+  };
+
+  add(window.okxwallet);
+  add(window.okxWallet);
+
+  for(const p of announcedProviders) add(p);
+
+  if(window.ethereum?.providers){
+    for(const p of window.ethereum.providers) add(p);
+  }
+  add(window.ethereum);
+
+  return candidates.find(p => p.isOkxWallet || p.isOKExWallet || p.isOkx)
+      || candidates.find(p => p.request)
+      || null;
+}
 let gpu = null, mining = false, claiming = false;
 let selectedDP = null, selectedVerified = false;
 let currentChallenge = ethers.ZeroHash, currentTarget = 0n, currentDifficulty = 0n;
@@ -463,37 +495,64 @@ async function initReadOnly(){
   await Promise.allSettled([refreshChain(false), loadLatestMints(), initGPU()]);
   setInterval(()=>{ if(!mining) refreshChain(true).catch(()=>{}); },5000);
 }
-async function switchRobinhood(){
-  if(!window.ethereum)throw new Error("No browser EVM wallet detected.");
+async function switchRobinhood(provider){
+  if(!provider) throw new Error("No injected EVM wallet detected. Please enable/install OKX Wallet and refresh the page.");
   try{
-    await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN_HEX}]});
+    await provider.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN_HEX}]});
   }catch(e){
-    if(e.code!==4902)throw e;
-    await window.ethereum.request({method:"wallet_addEthereumChain",params:[{
-      chainId:CHAIN_HEX,chainName:"Robinhood Chain",nativeCurrency:{name:"ETH",symbol:"ETH",decimals:18},
-      rpcUrls:[RPC],blockExplorerUrls:[EXPLORER]
+    if(e.code!==4902 && e.code!==-32603) throw e;
+    await provider.request({method:"wallet_addEthereumChain",params:[{
+      chainId:CHAIN_HEX,
+      chainName:"Robinhood Chain",
+      nativeCurrency:{name:"ETH",symbol:"ETH",decimals:18},
+      rpcUrls:[RPC],
+      blockExplorerUrls:[EXPLORER]
     }]});
+    await provider.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN_HEX}]});
   }
 }
 async function connectWallet(){
+  const btn=$("connectBtn");
+  const original=btn.textContent;
+  btn.disabled=true;
+  btn.textContent="CONNECTING…";
   try{
-    await switchRobinhood();
-    // Explicit user click only. There is intentionally no eth_requestAccounts on page load.
-    await window.ethereum.request({method:"eth_requestAccounts"});
-    walletProvider=new ethers.BrowserProvider(window.ethereum);
+    injectedProvider=pickInjectedProvider();
+    if(!injectedProvider){
+      throw new Error("No wallet provider found. Make sure OKX Wallet is enabled for this site, then refresh.");
+    }
+
+    // The first account request happens ONLY after this explicit CONNECT click.
+    await injectedProvider.request({method:"eth_requestAccounts"});
+    await switchRobinhood(injectedProvider);
+
+    walletProvider=new ethers.BrowserProvider(injectedProvider);
     signer=await walletProvider.getSigner();
     walletAddress=await signer.getAddress();
+
     deadPixelsWrite=new ethers.Contract(DEAD_PIXELS,DEAD_PIXELS_ABI,signer);
-    $("connectBtn").textContent=short(walletAddress,6,4);
-    log("Wallet connected by user action: "+walletAddress,"good");
-    if(window.ethereum?.on){
-      window.ethereum.on("accountsChanged",()=>location.reload());
-      window.ethereum.on("chainChanged",()=>location.reload());
+
+    btn.textContent=short(walletAddress,6,4);
+    log("Wallet connected by explicit user action: "+walletAddress,"good");
+
+    if(injectedProvider?.on){
+      injectedProvider.on("accountsChanged",()=>location.reload());
+      injectedProvider.on("chainChanged",()=>location.reload());
     }
+
     selectedVerified=false;
     $("fuelStatus").textContent="Verify a DEAD PIXELS";
     updateButtons();
-  }catch(e){ log("Wallet connection failed: "+(e.shortMessage||e.message),"bad"); }
+  }catch(e){
+    console.error("Wallet connect error:", e);
+    const msg=e?.shortMessage || e?.message || "Wallet connection failed";
+    log("Wallet connection failed: "+msg,"bad");
+    btn.textContent="CONNECT";
+    alert("HASHPIXELS wallet connection\n\n"+msg);
+  }finally{
+    btn.disabled=false;
+    if(!walletAddress && btn.textContent==="CONNECTING…") btn.textContent=original;
+  }
 }
 async function refreshChain(silent=true){
   try{
@@ -851,7 +910,15 @@ $("claimBtn").onclick=claimWinner;
 $("copyChallenge").onclick=async()=>{try{await navigator.clipboard.writeText(currentChallenge);$("copyChallenge").textContent="COPIED";setTimeout(()=>$("copyChallenge").textContent="COPY",1200);}catch{}};
 
 setBars();setEmptyCards();
-initReadOnly();
+discoverInjectedWallets();
+
+if(typeof ethers === "undefined"){
+  $("connectBtn").disabled=true;
+  $("connectBtn").textContent="LIBRARY ERROR";
+  log("Ethers library failed to load. Refresh once; if blocked by a browser extension, allow cdnjs/unpkg for this site.","bad");
+}else{
+  initReadOnly();
+}
 </script>
 </body>
 </html>

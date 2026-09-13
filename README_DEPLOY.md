@@ -29,3 +29,9 @@ Before public launch:
 - Activate mining on the HASHPIXELS contract only when ready.
 - Test with a wallet that owns a transferable DEAD PIXELS.
 - Confirm WebGPU works in current Chrome/Edge over HTTPS.
+
+Wallet-connect fix:
+- Supports OKX direct injection, window.ethereum, multi-provider arrays, and EIP-6963 provider discovery.
+- Still NO auto-connect and NO account request on page load.
+- CONNECT visibly changes to CONNECTING… and shows a clear error if no provider is available.
+- Ethers CDN uses Cloudflare cdnjs with unpkg fallback.
