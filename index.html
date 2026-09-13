@@ -557,7 +557,7 @@ async function connectWallet(){
 async function refreshChain(silent=true){
   try{
     const [active,challenge,target,mined,remaining,diff,bn]=await Promise.all([
-      hashpixelsRead.miningActivated(),hashpixelsRead.currentChallenge(),hashpixelsRead.target(),
+      hashpixelsRead.miningActivated(),hashpixelsRead.currentChallenge(),hashpixelsRead.getFunction("target").staticCall(),
       hashpixelsRead.totalMined(),hashpixelsRead.miningBlocksRemaining(),hashpixelsRead.currentDifficulty(),
       rpcProvider.getBlockNumber()
     ]);
@@ -577,6 +577,9 @@ async function refreshChain(silent=true){
     lastChainRead=Date.now();
     updateProbability();updateButtons();
     if(!silent)log("Chain state refreshed.");
+    if(walletAddress && !selectedVerified && !silent){
+      log("Next: enter a DEAD PIXELS token ID you own and press VERIFY.","muted");
+    }
     return {active,challenge,target,mined,remaining,diff,bn};
   }catch(e){
     if(!silent)log("Chain read failed: "+(e.shortMessage||e.message),"bad");
@@ -738,7 +741,11 @@ async function runBatch(challenge,target,start,count,dpId){
 async function startMining(){
   if(mining)return;
   if(!walletAddress)return log("Connect wallet first.","warn");
-  if(!selectedVerified||selectedDP===null)return log("Verify a DEAD PIXELS token first.","warn");
+  if(!selectedVerified||selectedDP===null){
+    log("Enter a DEAD PIXELS token ID you own, then press VERIFY before starting mining.","warn");
+    $("deadPixelId").focus();
+    return;
+  }
   if(!gpu)return log("WebGPU is not ready.","bad");
   const state=await refreshChain(true);
   if(!state.active)return log("Mining is not activated on-chain yet.","warn");

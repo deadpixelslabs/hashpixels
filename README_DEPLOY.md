@@ -35,3 +35,9 @@ Wallet-connect fix:
 - Still NO auto-connect and NO account request on page load.
 - CONNECT visibly changes to CONNECTING… and shows a clear error if no provider is available.
 - Ethers CDN uses Cloudflare cdnjs with unpkg fallback.
+
+Critical fix:
+- Ethers v6 reserves `contract.target` for the contract address.
+- The Solidity public getter `target()` is now called via `getFunction("target").staticCall()`.
+- This fixes `hashpixelsRead.target is not a function` and restores live chain state / START GPU MINING enablement.
+- START remains intentionally disabled until the connected wallet verifies ownership of a DEAD PIXELS token ID.
