@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07080b">
+  <meta name="description" content="HASHPIXELS — GPU Proof-of-Work NFT mining by Dead Pixels Labs on Robinhood Chain. Find a valid proof, burn one DEAD PIXELS, mint one instantly revealed HASHPIXELS.">
+  <title>HASHPIXELS — Mine</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.min.js"></script>
+  <style>
+    :root{
+      --bg:#07080b;--panel:#1d2028;--panel2:#12151b;--line:#3a3e48;--line2:#292d36;
+      --green:#a9df65;--green2:#68b54d;--cyan:#66dce2;--yellow:#f0d45b;--red:#f07184;
+      --white:#edf0e7;--muted:#9aa0a8;--shadow:#050607;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--white);font-family:"Share Tech Mono",monospace;min-height:100vh}
+    body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:100;opacity:.18;background:
+      linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);background-size:4px 4px}
+    a{color:inherit;text-decoration:none}
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    .shell{width:min(1080px,calc(100% - 28px));margin:auto}
+    header{position:sticky;top:0;z-index:50;background:rgba(7,8,11,.97);border-bottom:3px double var(--line)}
+    .nav{height:72px;display:flex;align-items:center;gap:12px}
+    .brand{font-family:"Silkscreen";font-weight:700;font-size:20px;display:flex;align-items:center;gap:9px;white-space:nowrap}
+    .brand span{color:var(--green)}
+    .mark{width:28px;height:28px;border:2px solid var(--green);position:relative;background:#101419;box-shadow:3px 3px 0 #242b24}
+    .mark:before,.mark:after{content:"";position:absolute;background:var(--cyan)}
+    .mark:before{width:4px;height:18px;left:7px;top:3px;box-shadow:8px 0 var(--green)}
+    .mark:after{height:4px;width:18px;left:3px;top:7px;box-shadow:0 8px var(--cyan)}
+    .navlinks{display:flex;align-items:center;gap:2px;font-family:"Silkscreen";font-size:10px}
+    .navlinks a{padding:10px 10px;color:#c9cdd3}
+    .navlinks a.active{background:var(--green);color:#071006}
+    .navlinks a:hover{color:var(--green)}
+    .navright{margin-left:auto;display:flex;align-items:center;gap:8px}
+    .ticker{border:2px solid var(--line);background:#11141a;padding:8px 11px;box-shadow:3px 3px 0 #222832;font-size:12px;color:var(--cyan);white-space:nowrap}
+    .btn{border:2px solid #0a0b0d;border-right-color:#6a6d69;border-bottom-color:#6a6d69;background:#292d36;color:var(--white);padding:11px 16px;font-family:"Silkscreen";font-size:10px;box-shadow:3px 3px 0 #0e1013}
+    .btn:hover:not(:disabled){transform:translate(-1px,-1px)}
+    .btn.green{background:var(--green2);color:#071006;border-top-color:#b8ef7c;border-left-color:#b8ef7c}
+    .btn.cyan{background:var(--cyan);color:#071012}
+    .btn.red{background:#5b2933;color:#ffdce2}
+    .btn:disabled{opacity:.43;cursor:not-allowed}
+    main{padding:36px 0 70px}
+    h1,h2,h3{font-family:"Silkscreen";margin:0}
+    h1{font-size:33px}
+    .intro{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:end;margin-bottom:14px}
+    .intro p{max-width:700px;color:#c0c5cb;line-height:1.45;margin:11px 0 0;font-size:14px}
+    .intro strong{color:var(--green)}
+    .intro-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+    .panel{border:2px solid #0b0d10;background:var(--panel);box-shadow:4px 4px 0 #0c0e12;margin-top:13px}
+    .panel-head{height:31px;padding:6px 12px;background:#3a3b44;border-bottom:2px solid #111;display:flex;align-items:center;justify-content:space-between;font-family:"Silkscreen";font-size:10px}
+    .panel-head.green{background:var(--green2);color:#071006}
+    .panel-head.cyan{background:var(--cyan);color:#071012}
+    .miner{border-color:#5e954a}
+    .miner-body{padding:14px;display:grid;grid-template-columns:330px 1fr;gap:16px}
+    .fuel{border:2px solid #090b0e;background:#12151b;padding:7px}
+    .fuel-screen{aspect-ratio:1;background:#222831;border:4px ridge #5a6068;display:grid;place-items:center;overflow:hidden;position:relative}
+    .fuel-screen img{width:100%;height:100%;object-fit:cover;display:none}
+    .fuel-placeholder{text-align:center;color:#7d858b;font-family:"Silkscreen";font-size:10px}
+    .fuel-placeholder .glyph{font-size:76px;line-height:.9;color:#4e5c4e;text-shadow:5px 5px 0 #162016;margin-bottom:14px}
+    .fuel-row{display:flex;gap:6px;margin-top:8px}
+    .fuel-row input{min-width:0;flex:1;background:#0c0f14;color:var(--white);border:2px solid #383d46;padding:10px}
+    .fuel-meta{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:11px;color:#aab0b6}
+    .fuel-meta b{color:var(--green)}
+    .work{min-width:0}
+    .hash-title{display:flex;justify-content:space-between;gap:10px;align-items:end;font-family:"Silkscreen";font-size:9px;color:#bfc5ca}
+    .bitbar{height:18px;margin:8px 0 5px;display:flex;gap:3px}
+    .bitbar i{display:block;flex:1;background:#343944;border:1px solid #191c22}
+    .bitbar i.hot{background:var(--cyan)}
+    .bitbar i.good{background:var(--green)}
+    .mono-line{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e1e5e8;font-size:13px}
+    .mono-line span{color:var(--green)}
+    .target{margin-top:16px}
+    .targetbar{height:15px;margin:8px 0;display:flex;gap:2px}
+    .targetbar i{flex:1;background:#414650}
+    .targetbar i:nth-child(-n+4){background:#1a1e24}
+    .minedby{font-size:12px;color:#b5bbc1;margin:8px 0 16px}
+    .stats4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:10px 0 14px}
+    .stat label{display:block;font-family:"Silkscreen";font-size:9px;color:#c4c8ce;margin-bottom:6px}
+    .stat .value{font-size:23px;color:#eef0ea;min-height:29px}
+    .stat small{color:#868e96}
+    .machine{display:grid;grid-template-columns:1.1fr 1fr 1.1fr;gap:10px;align-items:end;border-top:1px dashed #4a4d55;padding-top:12px}
+    .machine label{display:block;font-family:"Silkscreen";font-size:9px;color:#c4c8ce;margin-bottom:7px}
+    .switches{display:flex}
+    .switch{padding:10px 18px;background:#353945;color:#aeb3ba;font-family:"Silkscreen";font-size:9px;border:0}
+    .switch.on{background:var(--green);color:#071006}
+    .power select{width:100%;background:#0e1116;color:#e8ebe7;border:2px solid #424750;padding:9px}
+    .burnbox{text-align:right}
+    .burnbox strong{display:block;color:var(--green);font-size:17px;margin:6px 0 9px}
+    .progress{border-top:1px dashed #4a4d55;margin-top:14px;padding-top:10px}
+    .progress-head{display:flex;justify-content:space-between;font-family:"Silkscreen";font-size:9px}
+    .progressbar{height:10px;background:#101319;border:1px solid #3d424b;margin-top:7px}
+    .progressbar div{height:100%;width:0;background:var(--cyan)}
+    .console{height:128px;overflow:auto;background:#080b0f;border-top:2px solid #0d0f12;padding:9px 11px;font-size:11px;line-height:1.45;color:#aab0b6}
+    .console .good{color:#76e39d}.console .warn{color:var(--yellow)}.console .bad{color:#ff8292}.console .muted{color:#6f7881}
+    .twocol{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .info-body{padding:14px 16px}
+    .difficulty-bars{height:154px;display:flex;align-items:flex-end;gap:4px;padding:5px 0 8px;border-bottom:1px solid #4b4e56}
+    .difficulty-bars i{flex:1;background:#5f7847;border-top:1px solid #8eab69}
+    .info-copy{font-size:12px;color:#bcc2c8;line-height:1.45;margin-top:10px}
+    .network-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .network-grid .n{border-bottom:1px dashed #4a4d55;padding:8px 0}
+    .network-grid label{font-family:"Silkscreen";font-size:8px;color:#bfc4cb;display:block;margin-bottom:5px}
+    .network-grid b{font-size:16px;color:#eef1eb}
+    .anchor{margin-top:12px;border-top:1px dashed #4a4d55;padding-top:10px}
+    .anchor .addr{display:flex;justify-content:space-between;gap:10px;align-items:center}
+    .anchor code{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d4d8dc}
+    .gallery .panel-head a{color:#d7ff96}
+    .cards{padding:14px;display:grid;grid-template-columns:repeat(9,1fr);gap:5px}
+    .card{border:2px solid #393d46;background:#171a20;min-width:0}
+    .card .img{aspect-ratio:1;background:#101319;display:grid;place-items:center;overflow:hidden;color:#626a72}
+    .card img{width:100%;height:100%;object-fit:cover}
+    .card .cap{display:flex;justify-content:space-between;gap:4px;padding:4px 5px;font-size:10px}
+    .card .cap b{color:#c9d7e9}.card .cap span{color:var(--green)}
+    footer{border-top:3px double var(--line);padding:28px 0 42px;color:#aeb4ba}
+    .foot{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:28px}
+    .foot h3{font-size:10px;color:#d7dbe0;margin-bottom:9px}
+    .foot a{display:block;margin:6px 0}.foot a:hover{color:var(--green)}
+    .footbrand{font-family:"Silkscreen";font-size:12px;color:var(--green);margin-bottom:10px}
+    .notice{border:1px dashed #5a5e67;background:#11141a;padding:9px 11px;color:#aab0b6;font-size:11px;margin-top:10px}
+    .notice strong{color:var(--green)}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:90;display:none;place-items:center;padding:20px}
+    .modal.show{display:grid}
+    .modalbox{width:min(620px,100%);border:2px solid var(--green);background:#15191f;box-shadow:8px 8px 0 #071008}
+    .modalbody{padding:18px}
+    .winner{font-family:"Silkscreen";font-size:24px;color:var(--green);margin-bottom:10px}
+    .proofgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+    .proofgrid div{background:#0c0f14;border:1px solid #343943;padding:9px;min-width:0}
+    .proofgrid label{font-family:"Silkscreen";font-size:8px;color:#aab0b6;display:block;margin-bottom:5px}
+    .proofgrid code{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#eef0e8}
+    .modalactions{display:flex;gap:8px;justify-content:flex-end}
+    @media(max-width:900px){
+      .navlinks{display:none}.ticker{display:none}.miner-body{grid-template-columns:1fr}.fuel{max-width:410px}
+      .twocol{grid-template-columns:1fr}.cards{grid-template-columns:repeat(5,1fr)}.machine{grid-template-columns:1fr 1fr}.burnbox{grid-column:1/-1;text-align:left}
+    }
+    @media(max-width:600px){
+      .shell{width:min(100% - 16px,1080px)}.nav{height:62px}.brand{font-size:15px}.btn{padding:9px 10px}
+      h1{font-size:24px}.intro{grid-template-columns:1fr}.intro-actions{justify-content:flex-start}
+      .stats4{grid-template-columns:1fr 1fr}.cards{grid-template-columns:repeat(3,1fr)}
+      .foot{grid-template-columns:1fr}.proofgrid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="shell nav">
+    <a class="brand" href="/"><i class="mark"></i>HASH<span>PIXELS</span></a>
+    <nav class="navlinks">
+      <a class="active" href="#mine">MINE</a>
+      <a href="https://opensea.io/collection/dead-pixels-labs" target="_blank" rel="noopener">BUY DEAD PIXELS</a>
+      <a href="https://x.com/DEADPIXELS_RH" target="_blank" rel="noopener">X</a>
+      <a href="#network">NETWORK</a>
+    </nav>
+    <div class="navright">
+      <div class="ticker"><span id="tickerBlock">L2 —</span> · <span id="tickerMined">0 / 4,444 mined</span></div>
+      <button id="connectBtn" class="btn green">CONNECT</button>
+    </div>
+  </div>
+</header>
+
+<main id="mine" class="shell">
+  <section class="intro">
+    <div>
+      <h1>MINE A PIXEL</h1>
+      <p>Your GPU searches the live HASHPIXELS challenge for a valid proof. A successful proof lets you <strong>burn 1 DEAD PIXELS</strong> and mint exactly <strong>1 instantly revealed HASHPIXELS</strong>. No mint price. Gas only.</p>
+    </div>
+    <div class="intro-actions">
+      <a class="btn" href="https://opensea.io/collection/dead-pixels-labs" target="_blank" rel="noopener">BUY DEAD PIXELS</a>
+      <a class="btn" href="https://x.com/DEADPIXELS_RH" target="_blank" rel="noopener">FOLLOW X</a>
+    </div>
+  </section>
+
+  <section class="panel miner">
+    <div class="panel-head green"><span>MINER</span><span id="minerState">▪ IDLE</span></div>
+    <div class="miner-body">
+      <div class="fuel">
+        <div class="fuel-screen">
+          <img id="deadPixelImg" alt="Selected DEAD PIXELS">
+          <div id="fuelPlaceholder" class="fuel-placeholder">
+            <div class="glyph">#</div>
+            SELECT YOUR<br>DEAD PIXELS FUEL
+          </div>
+        </div>
+        <div class="fuel-row">
+          <input id="deadPixelId" type="number" min="0" step="1" placeholder="DEAD PIXELS token ID">
+          <button id="verifyFuelBtn" class="btn">VERIFY</button>
+        </div>
+        <div class="fuel-meta">
+          <span id="fuelStatus">Not selected</span>
+          <span><b>1 DP</b> / successful mine</span>
+        </div>
+      </div>
+
+      <div class="work">
+        <div class="hash-title">
+          <span>LIVE HASH SEARCH</span>
+          <span id="bitsLabel">TARGET —</span>
+        </div>
+        <div class="bitbar" id="bitbar"></div>
+        <div class="mono-line" id="challengeLine">challenge: —</div>
+
+        <div class="target">
+          <div class="hash-title"><span>TARGET TO BEAT</span><span id="targetShort">—</span></div>
+          <div class="targetbar" id="targetbar"></div>
+          <div class="minedby">Proof = keccak256(challenge + wallet + DEAD PIXELS tokenId + nonce)</div>
+        </div>
+
+        <div class="stats4">
+          <div class="stat"><label>SPEED</label><div class="value" id="hashrate">0 H/s</div><small>real WebGPU</small></div>
+          <div class="stat"><label>HASHES TESTED</label><div class="value" id="tested">0</div><small>this session</small></div>
+          <div class="stat"><label>EXPECTED WAIT</label><div class="value" id="expectedWait">—</div><small>statistical average</small></div>
+          <div class="stat"><label>CHANCE / MIN</label><div class="value" id="chanceMin">—</div><small>at current speed</small></div>
+        </div>
+
+        <div class="machine">
+          <div>
+            <label>MACHINE</label>
+            <div class="switches"><button class="switch on">GPU</button><button class="switch" disabled>CPU</button></div>
+          </div>
+          <div class="power">
+            <label>GPU POWER</label>
+            <select id="powerMode">
+              <option value="low">LOW</option>
+              <option value="balanced" selected>BALANCED</option>
+              <option value="max">MAX</option>
+            </select>
+          </div>
+          <div class="burnbox">
+            <label>SUCCESS COST</label>
+            <strong>1 DEAD PIXELS + GAS</strong>
+            <button id="startBtn" class="btn green" disabled>START GPU MINING</button>
+            <button id="stopBtn" class="btn red" disabled>STOP</button>
+          </div>
+        </div>
+
+        <div class="progress">
+          <div class="progress-head"><span id="gpuName">GPU DETECTING…</span><span id="batchMs">— ms</span></div>
+          <div class="progressbar"><div id="batchBar"></div></div>
+        </div>
+
+        <div class="notice">
+          <strong>Manual wallet only.</strong> This site never auto-connects, never requests a signature on page load, and never asks for a seed phrase or private key. The wallet transaction appears only after your GPU finds a valid proof and you choose to claim it.
+        </div>
+      </div>
+    </div>
+    <div id="console" class="console"></div>
+  </section>
+
+  <section class="twocol">
+    <div class="panel">
+      <div class="panel-head"><span>WHY IT GETS HARDER</span><span>1 HASHPIXEL ≈ 1 TARGET WIN</span></div>
+      <div class="info-body">
+        <div class="difficulty-bars" id="difficultyBars"></div>
+        <div class="info-copy">
+          HASHPIXELS retargets every <b>5 successful mines</b> toward a network-wide cadence of roughly <b>1 NFT per minute</b>. Each epoch can adjust the target by at most 25%, so the mining race changes with the amount of GPU power on the network.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="network">
+      <div class="panel-head cyan"><span>NETWORK</span><span>ROBINHOOD CHAIN</span></div>
+      <div class="info-body">
+        <div class="network-grid">
+          <div class="n"><label>DIFFICULTY</label><b id="difficulty">—</b></div>
+          <div class="n"><label>STATUS</label><b id="networkStatus">—</b></div>
+          <div class="n"><label>MINED</label><b id="mined">0</b></div>
+          <div class="n"><label>REMAINING</label><b id="remaining">4,444</b></div>
+        </div>
+        <div class="anchor">
+          <div class="hash-title"><span>CHALLENGE</span><span id="networkBlock">L2 —</span></div>
+          <div class="addr"><code id="challengeFull">—</code><button id="copyChallenge" class="btn">COPY</button></div>
+          <div class="info-copy">Every proof is tied to your wallet and the DEAD PIXELS token ID selected as fuel, so another wallet cannot simply copy your winning nonce.</div>
+        </div>
+        <div class="anchor">
+          <div class="hash-title"><span>CONTRACT</span><a target="_blank" rel="noopener" href="https://robinhoodchain.blockscout.com/address/0xB35774851217255a5e1ff08a9752101FCC71fFC8">BLOCKSCOUT ↗</a></div>
+          <div class="addr"><code>0xB35774851217255a5e1ff08a9752101FCC71fFC8</code></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel gallery">
+    <div class="panel-head"><span>LATEST MINES</span><a href="https://robinhoodchain.blockscout.com/address/0xB35774851217255a5e1ff08a9752101FCC71fFC8" target="_blank" rel="noopener">ON-CHAIN ↗</a></div>
+    <div id="mintCards" class="cards"></div>
+  </section>
+</main>
+
+<footer>
+  <div class="shell foot">
+    <div>
+      <div class="footbrand"># HASHPIXELS · DEAD PIXELS LABS</div>
+      <div>GPU Proof-of-Work NFTs on Robinhood Chain.</div>
+      <div>Find proof → burn one DEAD PIXELS → instant reveal.</div>
+    </div>
+    <div>
+      <h3>COLLECTION</h3>
+      <a href="https://opensea.io/collection/dead-pixels-labs" target="_blank" rel="noopener">Buy DEAD PIXELS</a>
+      <a href="https://hashpixels.vercel.app" target="_blank" rel="noopener">HASHPIXELS asset server</a>
+    </div>
+    <div>
+      <h3>ELSEWHERE</h3>
+      <a href="https://x.com/DEADPIXELS_RH" target="_blank" rel="noopener">X / @DEADPIXELS_RH</a>
+      <a href="https://robinhoodchain.blockscout.com/address/0xB35774851217255a5e1ff08a9752101FCC71fFC8" target="_blank" rel="noopener">Contract</a>
+    </div>
+  </div>
+</footer>
+
+<div id="winnerModal" class="modal">
+  <div class="modalbox">
+    <div class="panel-head green"><span>VALID PROOF FOUND</span><span>WINNER</span></div>
+    <div class="modalbody">
+      <div class="winner">BLOCK FOUND</div>
+      <div>Your GPU found a valid HASHPIXELS proof. Your DEAD PIXELS is still in your wallet until you explicitly confirm the claim transaction.</div>
+      <div class="proofgrid">
+        <div><label>DEAD PIXELS</label><code id="winDp">—</code></div>
+        <div><label>NONCE</label><code id="winNonce">—</code></div>
+        <div><label>PROOF HASH</label><code id="winProof">—</code></div>
+        <div><label>COST</label><code>1 DEAD PIXELS + gas</code></div>
+      </div>
+      <div class="modalactions">
+        <button id="dismissWinner" class="btn">DISMISS</button>
+        <button id="claimBtn" class="btn green">CLAIM &amp; BURN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const HASHPIXELS = "0xB35774851217255a5e1ff08a9752101FCC71fFC8";
+const DEAD_PIXELS = "0x27390fe7AE676fbfDb632E61cd4019996b07892c";
+const DEPLOY_BLOCK = 62247932;
+const RPC = "https://rpc.mainnet.chain.robinhood.com";
+const CHAIN_ID = 4663;
+const CHAIN_HEX = "0x1237";
+const EXPLORER = "https://robinhoodchain.blockscout.com";
+const WORKGROUP = 64;
+
+const HASHPIXELS_ABI = [
+  "function miningActivated() view returns(bool)",
+  "function currentChallenge() view returns(bytes32)",
+  "function target() view returns(uint256)",
+  "function totalMined() view returns(uint256)",
+  "function miningBlocksRemaining() view returns(uint256)",
+  "function currentDifficulty() view returns(uint256)",
+  "function tokenURI(uint256) view returns(string)",
+  "event HashPixelMined(uint256 indexed miningBlock,address indexed miner,uint256 indexed deadPixelTokenId,uint256 hashPixelTokenId,uint256 nonce,bytes32 proofHash,uint256 targetUsed,uint8 consumptionMode,uint256 timestamp)"
+];
+const DEAD_PIXELS_ABI = [
+  "function ownerOf(uint256 tokenId) view returns(address)",
+  "function tokenURI(uint256 tokenId) view returns(string)",
+  "function safeTransferFrom(address from,address to,uint256 tokenId,bytes data)"
+];
+
+const $ = id => document.getElementById(id);
+const fmt = n => new Intl.NumberFormat("en-US").format(n);
+const short = (s,a=8,b=6) => s ? s.slice(0,a)+"…"+s.slice(-b) : "—";
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+let rpcProvider, walletProvider, signer, walletAddress;
+let hashpixelsRead, deadPixelsRead, deadPixelsWrite;
+let gpu = null, mining = false, claiming = false;
+let selectedDP = null, selectedVerified = false;
+let currentChallenge = ethers.ZeroHash, currentTarget = 0n, currentDifficulty = 0n;
+let hashesTested = 0n, nonceCursor = 0n, batchSize = 32768, lastHashrate = 0;
+let pendingWinner = null, lastChainRead = 0;
+
+function log(msg, cls=""){
+  const d=document.createElement("div");
+  d.className=cls;
+  d.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`;
+  $("console").appendChild(d);
+  $("console").scrollTop=$("console").scrollHeight;
+  while($("console").children.length>160)$("console").firstChild.remove();
+}
+function formatRate(v){
+  if(v>=1e9)return(v/1e9).toFixed(2)+" GH/s";
+  if(v>=1e6)return(v/1e6).toFixed(2)+" MH/s";
+  if(v>=1e3)return(v/1e3).toFixed(2)+" KH/s";
+  return Math.max(0,v).toFixed(0)+" H/s";
+}
+function formatDuration(sec){
+  if(!Number.isFinite(sec)||sec<=0)return "—";
+  if(sec<60)return sec.toFixed(0)+"s";
+  if(sec<3600)return (sec/60).toFixed(1)+"m";
+  if(sec<86400)return (sec/3600).toFixed(1)+"h";
+  return (sec/86400).toFixed(1)+"d";
+}
+function rand64(){
+  const a=new Uint32Array(2);crypto.getRandomValues(a);
+  return (BigInt(a[1])<<32n)|BigInt(a[0]);
+}
+function hexBytes(hex){ return ethers.getBytes(hex); }
+function uint256Bytes(v){ return ethers.getBytes(ethers.zeroPadValue(ethers.toBeHex(v),32)); }
+function targetWords(target){
+  const h=target.toString(16).padStart(64,"0");
+  const out=new Uint32Array(8);
+  for(let i=0;i<8;i++)out[i]=parseInt(h.slice(i*8,i*8+8),16)>>>0;
+  return out;
+}
+function u64parts(n){return{lo:Number(n&0xffffffffn)>>>0,hi:Number((n>>32n)&0xffffffffn)>>>0}}
+function hashWordsToHex(words){return"0x"+Array.from(words).map(x=>(x>>>0).toString(16).padStart(8,"0")).join("")}
+function packRateBlock(challenge,address,deadPixelId){
+  // abi.encodePacked(bytes32 challenge, address miner, uint256 deadPixelTokenId, uint256 nonce)
+  // = 32 + 20 + 32 + 32 = 116 bytes. Low 64 bits of nonce are filled by GPU.
+  const bytes=new Uint8Array(136);
+  bytes.set(hexBytes(challenge),0);
+  bytes.set(hexBytes(address),32);
+  bytes.set(uint256Bytes(deadPixelId),52);
+  bytes[116]=0x01; // Ethereum Keccak padding
+  bytes[135]|=0x80;
+  const words=new Uint32Array(34);
+  for(let i=0;i<34;i++){
+    const p=i*4;
+    words[i]=(bytes[p]|(bytes[p+1]<<8)|(bytes[p+2]<<16)|(bytes[p+3]<<24))>>>0;
+  }
+  return words;
+}
+function setBars(){
+  $("bitbar").innerHTML=Array.from({length:32},(_,i)=>`<i class="${i<3?'good':i<14?'hot':''}"></i>`).join("");
+  $("targetbar").innerHTML=Array.from({length:32},()=>"<i></i>").join("");
+  $("difficultyBars").innerHTML=Array.from({length:32},(_,i)=>{
+    const h=Math.max(8,100-i*2.7);
+    return `<i style="height:${h}%"></i>`;
+  }).join("");
+}
+function setEmptyCards(){
+  $("mintCards").innerHTML=Array.from({length:18},()=>`<div class="card"><div class="img">—</div><div class="cap"><b>—</b><span>—</span></div></div>`).join("");
+}
+function updateProbability(){
+  const d=Number(currentDifficulty||0n);
+  const h=lastHashrate;
+  if(!d||!h){
+    $("expectedWait").textContent="—";$("chanceMin").textContent="—";return;
+  }
+  $("expectedWait").textContent=formatDuration(d/h);
+  const p=1-Math.exp(-(h*60)/d);
+  $("chanceMin").textContent=(p*100).toFixed(p<.01?4:p<1?2:1)+"%";
+}
+function updateButtons(){
+  const canStart=!!walletAddress && !!gpu && selectedVerified && currentChallenge!==ethers.ZeroHash && !mining && $("networkStatus").textContent==="LIVE";
+  $("startBtn").disabled=!canStart;
+  $("stopBtn").disabled=!mining;
+}
+function toHttp(uri){
+  if(uri?.startsWith("ipfs://")) return "https://ipfs.io/ipfs/"+uri.slice(7);
+  return uri;
+}
+async function initReadOnly(){
+  rpcProvider=new ethers.JsonRpcProvider(RPC);
+  hashpixelsRead=new ethers.Contract(HASHPIXELS,HASHPIXELS_ABI,rpcProvider);
+  deadPixelsRead=new ethers.Contract(DEAD_PIXELS,DEAD_PIXELS_ABI,rpcProvider);
+  log("HASHPIXELS miner booting…");
+  log("Read-only mode. Wallet has NOT been accessed.","muted");
+  await Promise.allSettled([refreshChain(false), loadLatestMints(), initGPU()]);
+  setInterval(()=>{ if(!mining) refreshChain(true).catch(()=>{}); },5000);
+}
+async function switchRobinhood(){
+  if(!window.ethereum)throw new Error("No browser EVM wallet detected.");
+  try{
+    await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN_HEX}]});
+  }catch(e){
+    if(e.code!==4902)throw e;
+    await window.ethereum.request({method:"wallet_addEthereumChain",params:[{
+      chainId:CHAIN_HEX,chainName:"Robinhood Chain",nativeCurrency:{name:"ETH",symbol:"ETH",decimals:18},
+      rpcUrls:[RPC],blockExplorerUrls:[EXPLORER]
+    }]});
+  }
+}
+async function connectWallet(){
+  try{
+    await switchRobinhood();
+    // Explicit user click only. There is intentionally no eth_requestAccounts on page load.
+    await window.ethereum.request({method:"eth_requestAccounts"});
+    walletProvider=new ethers.BrowserProvider(window.ethereum);
+    signer=await walletProvider.getSigner();
+    walletAddress=await signer.getAddress();
+    deadPixelsWrite=new ethers.Contract(DEAD_PIXELS,DEAD_PIXELS_ABI,signer);
+    $("connectBtn").textContent=short(walletAddress,6,4);
+    log("Wallet connected by user action: "+walletAddress,"good");
+    if(window.ethereum?.on){
+      window.ethereum.on("accountsChanged",()=>location.reload());
+      window.ethereum.on("chainChanged",()=>location.reload());
+    }
+    selectedVerified=false;
+    $("fuelStatus").textContent="Verify a DEAD PIXELS";
+    updateButtons();
+  }catch(e){ log("Wallet connection failed: "+(e.shortMessage||e.message),"bad"); }
+}
+async function refreshChain(silent=true){
+  try{
+    const [active,challenge,target,mined,remaining,diff,bn]=await Promise.all([
+      hashpixelsRead.miningActivated(),hashpixelsRead.currentChallenge(),hashpixelsRead.target(),
+      hashpixelsRead.totalMined(),hashpixelsRead.miningBlocksRemaining(),hashpixelsRead.currentDifficulty(),
+      rpcProvider.getBlockNumber()
+    ]);
+    currentChallenge=challenge;currentTarget=target;currentDifficulty=diff;
+    $("networkStatus").textContent=active?"LIVE":"NOT ACTIVE";
+    $("networkStatus").style.color=active?"var(--green)":"var(--yellow)";
+    $("mined").textContent=fmt(mined.toString());
+    $("remaining").textContent=fmt(remaining.toString());
+    $("difficulty").textContent=Number(diff)>=1e9?(Number(diff)/1e9).toFixed(2)+"B":fmt(diff.toString());
+    $("challengeLine").textContent="challenge: "+challenge;
+    $("challengeFull").textContent=challenge;
+    $("targetShort").textContent=short("0x"+target.toString(16).padStart(64,"0"),10,8);
+    $("networkBlock").textContent="L2 "+fmt(bn);
+    $("tickerBlock").textContent="L2 "+fmt(bn);
+    $("tickerMined").textContent=fmt(mined.toString())+" / 4,444 mined";
+    $("bitsLabel").textContent="DIFFICULTY "+(Number(diff)/1e9).toFixed(2)+"B";
+    lastChainRead=Date.now();
+    updateProbability();updateButtons();
+    if(!silent)log("Chain state refreshed.");
+    return {active,challenge,target,mined,remaining,diff,bn};
+  }catch(e){
+    if(!silent)log("Chain read failed: "+(e.shortMessage||e.message),"bad");
+    throw e;
+  }
+}
+async function verifyFuel(){
+  if(!walletAddress){log("Connect wallet first.","warn");return;}
+  const raw=$("deadPixelId").value.trim();
+  if(!raw){log("Enter a DEAD PIXELS token ID.","warn");return;}
+  const id=BigInt(raw);
+  selectedVerified=false;selectedDP=id;updateButtons();
+  $("fuelStatus").textContent="Checking ownership…";
+  try{
+    const owner=await deadPixelsRead.ownerOf(id);
+    if(owner.toLowerCase()!==walletAddress.toLowerCase()){
+      $("fuelStatus").textContent="Not owned by connected wallet";
+      log("DEAD PIXELS #"+id+" is not owned by "+short(walletAddress),"bad");
+      return;
+    }
+    selectedVerified=true;
+    $("fuelStatus").innerHTML="<b>OWNER VERIFIED</b> · #"+id;
+    log("DEAD PIXELS #"+id+" ownership verified.","good");
+    try{
+      const uri=await deadPixelsRead.tokenURI(id);
+      const meta=await fetch(toHttp(uri),{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject());
+      if(meta?.image){
+        $("deadPixelImg").src=toHttp(meta.image);
+        $("deadPixelImg").style.display="block";
+        $("fuelPlaceholder").style.display="none";
+      }
+    }catch{}
+  }catch(e){
+    $("fuelStatus").textContent="Token not found / RPC error";
+    log("Fuel verification failed: "+(e.shortMessage||e.message),"bad");
+  }
+  updateButtons();
+}
+
+const SHADER=String.raw`
+struct Params { startLo:u32, startHi:u32, count:u32, pad:u32 }
+struct Result {
+  found: atomic<u32>,
+  nonceLo:u32, nonceHi:u32,
+  h0:u32,h1:u32,h2:u32,h3:u32,h4:u32,h5:u32,h6:u32,h7:u32
+}
+@group(0) @binding(0) var<storage,read> baseWords: array<u32>;
+@group(0) @binding(1) var<storage,read> powTarget: array<u32>;
+@group(0) @binding(2) var<uniform> params: Params;
+@group(0) @binding(3) var<storage,read_write> result: Result;
+const RHO:array<u32,25>=array<u32,25>(0u,1u,62u,28u,27u,36u,44u,6u,55u,20u,3u,10u,43u,25u,39u,41u,45u,15u,21u,8u,18u,2u,61u,56u,14u);
+const RC:array<vec2<u32>,24>=array<vec2<u32>,24>(
+vec2<u32>(0x00000001u,0x00000000u),vec2<u32>(0x00008082u,0x00000000u),vec2<u32>(0x0000808au,0x80000000u),vec2<u32>(0x80008000u,0x80000000u),
+vec2<u32>(0x0000808bu,0x00000000u),vec2<u32>(0x80000001u,0x00000000u),vec2<u32>(0x80008081u,0x80000000u),vec2<u32>(0x00008009u,0x80000000u),
+vec2<u32>(0x0000008au,0x00000000u),vec2<u32>(0x00000088u,0x00000000u),vec2<u32>(0x80008009u,0x00000000u),vec2<u32>(0x8000000au,0x00000000u),
+vec2<u32>(0x8000808bu,0x00000000u),vec2<u32>(0x0000008bu,0x80000000u),vec2<u32>(0x00008089u,0x80000000u),vec2<u32>(0x00008003u,0x80000000u),
+vec2<u32>(0x00008002u,0x80000000u),vec2<u32>(0x00000080u,0x80000000u),vec2<u32>(0x0000800au,0x00000000u),vec2<u32>(0x8000000au,0x80000000u),
+vec2<u32>(0x80008081u,0x80000000u),vec2<u32>(0x00008080u,0x80000000u),vec2<u32>(0x80000001u,0x00000000u),vec2<u32>(0x80008008u,0x80000000u));
+fn rol(v:vec2<u32>,n:u32)->vec2<u32>{
+  if(n==0u){return v;}if(n<32u){return vec2<u32>((v.x<<n)|(v.y>>(32u-n)),(v.y<<n)|(v.x>>(32u-n)));}
+  if(n==32u){return vec2<u32>(v.y,v.x);}let m=n-32u;return vec2<u32>((v.y<<m)|(v.x>>(32u-m)),(v.x<<m)|(v.y>>(32u-m)));
+}
+fn bswap(x:u32)->u32{return ((x&0x000000ffu)<<24u)|((x&0x0000ff00u)<<8u)|((x&0x00ff0000u)>>8u)|((x&0xff000000u)>>24u);}
+fn keccakf(s:ptr<function,array<vec2<u32>,25>>){
+  for(var rnd:u32=0u;rnd<24u;rnd++){
+    var c:array<vec2<u32>,5>;var d:array<vec2<u32>,5>;var b:array<vec2<u32>,25>;
+    for(var x:u32=0u;x<5u;x++){var q=(*s)[x];q=vec2<u32>(q.x^(*s)[x+5u].x,q.y^(*s)[x+5u].y);q=vec2<u32>(q.x^(*s)[x+10u].x,q.y^(*s)[x+10u].y);q=vec2<u32>(q.x^(*s)[x+15u].x,q.y^(*s)[x+15u].y);q=vec2<u32>(q.x^(*s)[x+20u].x,q.y^(*s)[x+20u].y);c[x]=q;}
+    for(var x:u32=0u;x<5u;x++){let p=c[(x+4u)%5u];let r=rol(c[(x+1u)%5u],1u);d[x]=vec2<u32>(p.x^r.x,p.y^r.y);}
+    for(var y:u32=0u;y<5u;y++){for(var x:u32=0u;x<5u;x++){let i=x+5u*y;(*s)[i]=vec2<u32>((*s)[i].x^d[x].x,(*s)[i].y^d[x].y);}}
+    for(var y:u32=0u;y<5u;y++){for(var x:u32=0u;x<5u;x++){let i=x+5u*y;let nx=y;let ny=(2u*x+3u*y)%5u;b[nx+5u*ny]=rol((*s)[i],RHO[i]);}}
+    for(var y:u32=0u;y<5u;y++){for(var x:u32=0u;x<5u;x++){let i=x+5u*y;let a=b[i];let b1=b[((x+1u)%5u)+5u*y];let b2=b[((x+2u)%5u)+5u*y];(*s)[i]=vec2<u32>(a.x^((~b1.x)&b2.x),a.y^((~b1.y)&b2.y));}}
+    (*s)[0]=vec2<u32>((*s)[0].x^RC[rnd].x,(*s)[0].y^RC[rnd].y);
+  }
+}
+fn isValid(h:ptr<function,array<u32,8>>)->bool{
+  for(var i:u32=0u;i<8u;i++){if((*h)[i]<powTarget[i]){return true;}if((*h)[i]>powTarget[i]){return false;}}return true;
+}
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid:vec3<u32>){
+  let idx=gid.x;if(idx>=params.count){return;}
+  let lo=params.startLo+idx;let carry=select(0u,1u,lo<params.startLo);let hi=params.startHi+carry;
+  var words:array<u32,34>;for(var i:u32=0u;i<34u;i++){words[i]=baseWords[i];}
+  // nonce is uint256 at bytes 84..115; scan its low 64 bits at bytes 108..115.
+  words[27]=bswap(hi);words[28]=bswap(lo);
+  var s:array<vec2<u32>,25>;for(var i:u32=0u;i<25u;i++){s[i]=vec2<u32>(0u,0u);}
+  for(var i:u32=0u;i<17u;i++){s[i]=vec2<u32>(words[i*2u],words[i*2u+1u]);}
+  keccakf(&s);
+  var h:array<u32,8>;
+  h[0]=bswap(s[0].x);h[1]=bswap(s[0].y);h[2]=bswap(s[1].x);h[3]=bswap(s[1].y);
+  h[4]=bswap(s[2].x);h[5]=bswap(s[2].y);h[6]=bswap(s[3].x);h[7]=bswap(s[3].y);
+  if(isValid(&h)){
+    let won=atomicCompareExchangeWeak(&result.found,0u,1u);
+    if(won.exchanged){result.nonceLo=lo;result.nonceHi=hi;result.h0=h[0];result.h1=h[1];result.h2=h[2];result.h3=h[3];result.h4=h[4];result.h5=h[5];result.h6=h[6];result.h7=h[7];}
+  }
+}`;
+
+async function initGPU(){
+  if(!navigator.gpu){
+    $("gpuName").textContent="WEBGPU UNSUPPORTED";
+    log("WebGPU unavailable. Use current Chrome/Edge on HTTPS with hardware acceleration.","bad");return;
+  }
+  try{
+    const adapter=await navigator.gpu.requestAdapter({powerPreference:"high-performance"});
+    if(!adapter)throw new Error("No WebGPU adapter found.");
+    const device=await adapter.requestDevice();
+    const info=adapter.info||{};
+    const label=[info.vendor,info.architecture,info.device].filter(Boolean).join(" ")||"WebGPU GPU";
+    const module=device.createShaderModule({code:SHADER,label:"HASHPIXELS Ethereum Keccak Miner"});
+    const ci=await module.getCompilationInfo();
+    const errs=ci.messages.filter(x=>x.type==="error");
+    if(errs.length)throw new Error(errs.map(x=>`${x.lineNum}:${x.linePos} ${x.message}`).join("\n"));
+    const pipeline=await device.createComputePipelineAsync({layout:"auto",compute:{module,entryPoint:"main"}});
+    const u=GPUBufferUsage;
+    const baseBuffer=device.createBuffer({size:136,usage:u.STORAGE|u.COPY_DST});
+    const targetBuffer=device.createBuffer({size:32,usage:u.STORAGE|u.COPY_DST});
+    const paramsBuffer=device.createBuffer({size:16,usage:u.UNIFORM|u.COPY_DST});
+    const resultBuffer=device.createBuffer({size:44,usage:u.STORAGE|u.COPY_SRC|u.COPY_DST});
+    const readBuffer=device.createBuffer({size:44,usage:u.COPY_DST|u.MAP_READ});
+    const bindGroup=device.createBindGroup({layout:pipeline.getBindGroupLayout(0),entries:[
+      {binding:0,resource:{buffer:baseBuffer}},{binding:1,resource:{buffer:targetBuffer}},
+      {binding:2,resource:{buffer:paramsBuffer}},{binding:3,resource:{buffer:resultBuffer}}
+    ]});
+    gpu={adapter,device,pipeline,baseBuffer,targetBuffer,paramsBuffer,resultBuffer,readBuffer,bindGroup};
+    $("gpuName").textContent=label.toUpperCase();
+    log("WebGPU ready: "+label,"good");
+    updateButtons();
+  }catch(e){
+    $("gpuName").textContent="GPU ERROR";
+    log("WebGPU init failed: "+e.message,"bad");console.error(e);
+  }
+}
+function powerSettings(){
+  const mode=$("powerMode").value;
+  if(mode==="low")return{max:131072,targetMs:65};
+  if(mode==="max")return{max:1048576,targetMs:170};
+  return{max:524288,targetMs:115};
+}
+async function runBatch(challenge,target,start,count,dpId){
+  const {device}=gpu;
+  device.queue.writeBuffer(gpu.baseBuffer,0,packRateBlock(challenge,walletAddress,dpId));
+  device.queue.writeBuffer(gpu.targetBuffer,0,targetWords(target));
+  const p=u64parts(start);
+  device.queue.writeBuffer(gpu.paramsBuffer,0,new Uint32Array([p.lo,p.hi,count,0]));
+  device.queue.writeBuffer(gpu.resultBuffer,0,new Uint32Array(11));
+  const encoder=device.createCommandEncoder();
+  const pass=encoder.beginComputePass();
+  pass.setPipeline(gpu.pipeline);pass.setBindGroup(0,gpu.bindGroup);pass.dispatchWorkgroups(Math.ceil(count/WORKGROUP));pass.end();
+  encoder.copyBufferToBuffer(gpu.resultBuffer,0,gpu.readBuffer,0,44);
+  const t0=performance.now();device.queue.submit([encoder.finish()]);
+  await gpu.readBuffer.mapAsync(GPUMapMode.READ);
+  const t1=performance.now();
+  const copy=new Uint32Array(gpu.readBuffer.getMappedRange().slice(0));gpu.readBuffer.unmap();
+  if(copy[0]===1){
+    const nonce=(BigInt(copy[2])<<32n)|BigInt(copy[1]);
+    return{ms:t1-t0,nonce,hash:hashWordsToHex(copy.slice(3,11))};
+  }
+  return{ms:t1-t0,nonce:null,hash:null};
+}
+async function startMining(){
+  if(mining)return;
+  if(!walletAddress)return log("Connect wallet first.","warn");
+  if(!selectedVerified||selectedDP===null)return log("Verify a DEAD PIXELS token first.","warn");
+  if(!gpu)return log("WebGPU is not ready.","bad");
+  const state=await refreshChain(true);
+  if(!state.active)return log("Mining is not activated on-chain yet.","warn");
+  // Re-check ownership immediately before work starts.
+  const owner=await deadPixelsRead.ownerOf(selectedDP);
+  if(owner.toLowerCase()!==walletAddress.toLowerCase()){selectedVerified=false;updateButtons();return log("Selected DEAD PIXELS is no longer owned by this wallet.","bad");}
+  mining=true;hashesTested=0n;nonceCursor=rand64();lastHashrate=0;
+  $("minerState").textContent="▪ MINING";$("minerState").style.color="#071006";
+  log("REAL WebGPU mining started.","good");
+  log("Fuel: DEAD PIXELS #"+selectedDP+". It will NOT be transferred unless you find a valid proof and confirm claim.","muted");
+  updateButtons();miningLoop();
+}
+function stopMining(withLog=true){
+  mining=false;
+  $("minerState").textContent="▪ IDLE";$("minerState").style.color="";
+  $("batchBar").style.width="0";
+  updateButtons();
+  if(withLog)log("Mining stopped.","warn");
+}
+async function miningLoop(){
+  while(mining){
+    try{
+      if(Date.now()-lastChainRead>800){
+        const state=await refreshChain(true);
+        if(!state.active){stopMining(false);log("Mining is not active on-chain.","warn");break;}
+      }
+      const challenge=currentChallenge,target=currentTarget,dp=selectedDP;
+      const start=nonceCursor;
+      const settings=powerSettings();
+      batchSize=Math.min(batchSize,settings.max);
+      $("batchBar").style.width="55%";
+      const r=await runBatch(challenge,target,start,batchSize,dp);
+      if(!mining)break;
+      hashesTested+=BigInt(batchSize);
+      nonceCursor=(nonceCursor+BigInt(batchSize))&((1n<<64n)-1n);
+      lastHashrate=batchSize/(Math.max(r.ms,1)/1000);
+      $("hashrate").textContent=formatRate(lastHashrate);
+      $("tested").textContent=fmt(hashesTested.toString());
+      $("batchMs").textContent=r.ms.toFixed(1)+" ms";
+      $("batchBar").style.width="100%";
+      updateProbability();
+      const desired=Math.max(4096,Math.min(settings.max,Math.round(batchSize*(settings.targetMs/Math.max(r.ms,10)))));
+      batchSize=Math.max(WORKGROUP,Math.floor(desired/WORKGROUP)*WORKGROUP);
+      if(r.nonce!==null){
+        const proof=ethers.solidityPackedKeccak256(
+          ["bytes32","address","uint256","uint256"],
+          [challenge,walletAddress,dp,r.nonce]
+        );
+        if(BigInt(proof)<=target && proof.toLowerCase()===r.hash.toLowerCase()){
+          const live=await hashpixelsRead.currentChallenge();
+          const owner=await deadPixelsRead.ownerOf(dp);
+          if(live.toLowerCase()===challenge.toLowerCase() && owner.toLowerCase()===walletAddress.toLowerCase()){
+            pendingWinner={nonce:r.nonce,proof,challenge,target,dp};
+            stopMining(false);
+            showWinner();
+            log("★ VALID PROOF FOUND ★ nonce "+r.nonce,"good");
+            break;
+          }else{
+            log("Candidate became stale before claim. Continuing on latest challenge.","warn");
+            lastChainRead=0;
+          }
+        }else{
+          log("GPU candidate failed CPU safety verification. No transaction requested.","bad");
+        }
+      }
+      await sleep(0);
+    }catch(e){
+      log("Mining loop error: "+(e.shortMessage||e.message),"bad");
+      console.error(e);await sleep(500);
+    }
+  }
+}
+function showWinner(){
+  $("winDp").textContent="#"+pendingWinner.dp;
+  $("winNonce").textContent=pendingWinner.nonce.toString();
+  $("winProof").textContent=pendingWinner.proof;
+  $("winnerModal").classList.add("show");
+}
+async function claimWinner(){
+  if(!pendingWinner||claiming)return;
+  claiming=true;$("claimBtn").disabled=true;
+  try{
+    const liveChallenge=await hashpixelsRead.currentChallenge();
+    if(liveChallenge.toLowerCase()!==pendingWinner.challenge.toLowerCase())throw new Error("Proof is stale — another miner already advanced the challenge.");
+    const owner=await deadPixelsRead.ownerOf(pendingWinner.dp);
+    if(owner.toLowerCase()!==walletAddress.toLowerCase())throw new Error("Connected wallet no longer owns the selected DEAD PIXELS.");
+    const proof=ethers.solidityPackedKeccak256(["bytes32","address","uint256","uint256"],
+      [pendingWinner.challenge,walletAddress,pendingWinner.dp,pendingWinner.nonce]);
+    if(proof.toLowerCase()!==pendingWinner.proof.toLowerCase()||BigInt(proof)>pendingWinner.target)throw new Error("Local proof verification failed.");
+    const data=ethers.AbiCoder.defaultAbiCoder().encode(["uint256"],[pendingWinner.nonce]);
+    log("Requesting CLAIM & BURN transaction in wallet…","warn");
+    const fn=deadPixelsWrite.getFunction("safeTransferFrom(address,address,uint256,bytes)");
+    const tx=await fn.send(walletAddress,HASHPIXELS,pendingWinner.dp,data);
+    log("Claim transaction sent: "+tx.hash,"good");
+    const receipt=await tx.wait();
+    let mintedId=null;
+    const iface=new ethers.Interface(HASHPIXELS_ABI);
+    for(const l of receipt.logs){
+      if(l.address.toLowerCase()!==HASHPIXELS.toLowerCase())continue;
+      try{const p=iface.parseLog(l);if(p?.name==="HashPixelMined"){mintedId=p.args.hashPixelTokenId;break;}}catch{}
+    }
+    log("HASHPIXELS claim confirmed"+(mintedId!==null?" — minted #"+mintedId:"")+".","good");
+    $("winnerModal").classList.remove("show");
+    pendingWinner=null;selectedVerified=false;selectedDP=null;
+    $("deadPixelId").value="";$("fuelStatus").textContent="Select another DEAD PIXELS";
+    $("deadPixelImg").style.display="none";$("fuelPlaceholder").style.display="block";
+    await refreshChain(false);await loadLatestMints();
+    if(mintedId!==null){
+      try{
+        const uri=await hashpixelsRead.tokenURI(mintedId);
+        const meta=await fetch(toHttp(uri),{cache:"no-store"}).then(r=>r.json());
+        if(meta?.image)window.open(toHttp(meta.image),"_blank","noopener");
+      }catch{}
+    }
+  }catch(e){
+    log("Claim failed: "+(e.shortMessage||e.message),"bad");
+  }finally{
+    claiming=false;$("claimBtn").disabled=false;updateButtons();
+  }
+}
+
+async function loadLatestMints(){
+  try{
+    const latest=await rpcProvider.getBlockNumber();
+    const iface=new ethers.Interface(HASHPIXELS_ABI);
+    const topic=iface.getEvent("HashPixelMined").topicHash;
+    const events=[];
+    const chunk=20000;
+    let to=latest;
+    while(to>=DEPLOY_BLOCK && events.length<18){
+      const from=Math.max(DEPLOY_BLOCK,to-chunk+1);
+      const logs=await rpcProvider.getLogs({address:HASHPIXELS,topics:[topic],fromBlock:from,toBlock:to});
+      for(let i=logs.length-1;i>=0&&events.length<18;i--){
+        try{events.push({parsed:iface.parseLog(logs[i]),txHash:logs[i].transactionHash});}catch{}
+      }
+      if(from===DEPLOY_BLOCK)break;
+      to=from-1;
+    }
+    if(!events.length){setEmptyCards();return;}
+    const cards=[];
+    for(const ev of events){
+      const e=ev.parsed;
+      const id=e.args.hashPixelTokenId;
+      let image=null,rarity="";
+      try{
+        const uri=await hashpixelsRead.tokenURI(id);
+        const meta=await fetch(toHttp(uri),{cache:"no-store"}).then(r=>r.json());
+        image=toHttp(meta.image);
+        rarity=(meta.attributes||[]).find(x=>x.trait_type==="Rarity")?.value||"";
+      }catch{}
+      cards.push(`<a class="card" target="_blank" rel="noopener" href="${EXPLORER}/tx/${ev.txHash}">
+        <div class="img">${image?`<img src="${image}" alt="HASHPIXELS #${id}">`:"#" + id}</div>
+        <div class="cap"><b>#${id}</b><span>${rarity||"MINED"}</span></div>
+      </a>`);
+    }
+    $("mintCards").innerHTML=cards.join("");
+  }catch(e){
+    console.warn("Latest mints:",e);setEmptyCards();
+  }
+}
+
+$("connectBtn").onclick=connectWallet;
+$("verifyFuelBtn").onclick=verifyFuel;
+$("deadPixelId").addEventListener("keydown",e=>{if(e.key==="Enter")verifyFuel();});
+$("startBtn").onclick=startMining;
+$("stopBtn").onclick=()=>stopMining();
+$("dismissWinner").onclick=()=>{$("winnerModal").classList.remove("show");};
+$("claimBtn").onclick=claimWinner;
+$("copyChallenge").onclick=async()=>{try{await navigator.clipboard.writeText(currentChallenge);$("copyChallenge").textContent="COPIED";setTimeout(()=>$("copyChallenge").textContent="COPY",1200);}catch{}};
+
+setBars();setEmptyCards();
+initReadOnly();
+</script>
+</body>
+</html>
