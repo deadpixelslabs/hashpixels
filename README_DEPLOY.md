@@ -41,3 +41,9 @@ Critical fix:
 - The Solidity public getter `target()` is now called via `getFunction("target").staticCall()`.
 - This fixes `hashpixelsRead.target is not a function` and restores live chain state / START GPU MINING enablement.
 - START remains intentionally disabled until the connected wallet verifies ownership of a DEAD PIXELS token ID.
+
+Mining-loop network stability fix:
+- After manual wallet connection, live contract reads use the wallet's injected RPC provider instead of the public browser RPC.
+- While hashing, the miner only syncs currentChallenge + target every ~3 seconds instead of doing a full multi-call refresh every ~0.8 seconds.
+- Temporary fetch/RPC failures no longer interrupt GPU hashing or spam the console.
+- Full dashboard refresh remains slower when idle.
